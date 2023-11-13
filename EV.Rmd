@@ -1,0 +1,103 @@
+---
+title: "EV"
+output: html_document
+date: "2023-11-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+# Load the required libraries
+library(rvest)
+library(tidyverse)
+```
+
+```{r}
+# URL of the webpage
+url <- "https://elbilista.se/"
+
+# Read the HTML content from the webpage
+webpage <- read_html(url)
+
+# Extract car information
+car_items <- html_nodes(webpage, "div.ev_cars__list-item")
+
+# Create an empty list to store data frames
+car_data_list <- list()
+
+# Loop through each car item and extract the information
+for (car_item in car_items) {
+ 
+  brand <- html_text(html_nodes(car_item, "span.ev_cars__car-brand"))
+  car_name <- html_text(html_nodes(car_item, "h3.ev_cars__car-name"))
+  range <- html_text(html_nodes(car_item, "span.range"))
+  acceleration <- html_text(html_nodes(car_item, "span.acceleration"))
+  battery_capacity <- html_text(html_nodes(car_item, "span.battery-capacity"))
+  top_speed <- html_text(html_nodes(car_item, "span.top-speed"))
+
+  # Create a data frame with the extracted information
+  car_data_list[[length(car_data_list) + 1]] <- data.frame(
+    Brand = brand,
+    CarName = car_name,
+    Range = range,
+    Acceleration = acceleration,
+    BatteryCapacity = battery_capacity,
+    TopSpeed = top_speed
+  )
+}
+
+# Combine the list of data frames into a single data frame
+scraped_data <- do.call(rbind, car_data_list)
+
+```
+```{r}
+car_data <- read.csv('car_data.csv')
+```
+```{r}
+# Print the dataframe with the scraped data
+
+options(width = 180)
+
+print(head(car_data))
+```
+```{r}
+#Check for missing values or duplicated values
+
+sum(is.na(car_data))
+
+sum(duplicated(car_data))
+```
+```{r}
+# Clean the CarName column by removing spaces and \n
+# Clean the columns Range, Acceleration BatteryCapacity and TopSpeed from (km, s, kWh and km/h)
+
+clean_car_data <- car_data %>%
+  mutate(
+          CarName = trimws(CarName),
+          Range = gsub('km', '', Range),
+          Acceleration = gsub('s', '', Acceleration),
+          BatteryCapacity = gsub('kWh', '', BatteryCapacity),
+          TopSpeed = gsub('km/h', '', TopSpeed)
+        )
+
+head(clean_car_data)
+```
+```{r}
+#Clean the CarName column by removing Brand
+
+clean_car_data <- clean_car_data %>%
+  mutate(CarName = str_replace(CarName, Brand, ""))
+
+head(clean_car_data)
+```
+```{r}
+# Change the columns Range, Acceleration, BatteryCapacity and TopSpeed to Numeric
+
+clean_car_data <- clean_car_data %>%
+  mutate_at(vars(Range, Acceleration, BatteryCapacity, TopSpeed), as.numeric)
+
+head(clean_car_data)
+```
